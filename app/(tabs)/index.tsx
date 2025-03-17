@@ -8,7 +8,7 @@ import {
   ScrollView,
   ImageBackground,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native"; // التنقل عبر الشاشات باستخدام react-navigation
 
 const Login: React.FC = () => {
   const navigation = useNavigation();
@@ -17,8 +17,8 @@ const Login: React.FC = () => {
 
   return (
     <ImageBackground
-      source={require("../../assets/images/thefillbac.png")} // استخدم المسار الصحيح للصورة
-      style={styles.container} // تأكد من أن الصورة تغطي الشاشة بالكامل
+      source={require("../../assets/images/thefillbac.png")} // تأكد من المسار الصحيح للصورة
+      style={styles.container} // تعيين الخلفية للصورة
     >
       <ScrollView contentContainerStyle={styles.innerContainer}>
         <View style={styles.formWrapper}>
@@ -43,14 +43,14 @@ const Login: React.FC = () => {
 
             <TouchableOpacity
               style={styles.button}
-              onPress={() => navigation.navigate("Dashboard")}
+              onPress={() => navigation.navigate("Dashboard")} // الانتقال إلى صفحة Dashboard
             >
               <Text style={styles.buttonText}>SIGN IN</Text>
             </TouchableOpacity>
 
             <View style={styles.signupLink}>
               <Text style={styles.text}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
+              <TouchableOpacity onPress={() => navigation.navigate("explore")}>
                 <Text style={styles.linkText}>SIGN UP</Text>
               </TouchableOpacity>
             </View>

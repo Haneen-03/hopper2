@@ -45,14 +45,14 @@ const Signup: React.FC = () => {
           />
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate("Dashboard")}
+            onPress={() => navigation.navigate("index")}
           >
             <Text style={styles.buttonText}>SIGN UP</Text>
           </TouchableOpacity>
 
           <View style={styles.loginLink}>
             <Text style={styles.text}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <TouchableOpacity onPress={() => navigation.navigate("explore")}>
               <Text style={styles.linkText}>SIGN IN</Text>
             </TouchableOpacity>
           </View>

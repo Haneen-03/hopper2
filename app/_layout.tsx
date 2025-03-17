@@ -1,24 +1,34 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { useEffect } from "react";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+// التحقق مما إذا كان التطبيق يعمل في بيئة المتصفح
+const isWeb = typeof window !== "undefined";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+// استيراد Platform فقط إذا لم يكن التطبيق على الويب
+const Platform = isWeb ? null : require("react-native").Platform;
+
+// استيراد SplashScreen فقط إذا لم يكن التطبيق على الويب
+const SplashScreen = isWeb
+  ? null
+  : require("react-native-splash-screen").default;
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && SplashScreen && Platform && Platform.OS !== "web") {
+      SplashScreen.preventAutoHideAsync();
       SplashScreen.hideAsync();
     }
   }, [loaded]);
@@ -28,7 +38,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
