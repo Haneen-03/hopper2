@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { useEffect } from "react";
 import {
   DarkTheme,
@@ -8,6 +9,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { AuthProvider } from '../context/AuthContext';
 
 // Check if the app is running in a browser environment
 const isWeb = typeof window !== "undefined";
@@ -38,17 +40,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {/* Create a stack for auth screens (login/signup) */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        
-        {/* Create a stack for the main app screen */}
-        <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-        
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="signin" options={{ headerShown: false }} />
+          <Stack.Screen name="signup" options={{ headerShown: false }} />
+          <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+          <Stack.Screen name="football" options={{ headerShown: false }} />
+          <Stack.Screen name="admin" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

@@ -7,14 +7,38 @@ import {
   StyleSheet,
   ScrollView,
   ImageBackground,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 
 const Signin = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("User signed in successfully:", userCredential.user.uid);
+      router.replace("/dashboard");
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      Alert.alert("Error", error.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ImageBackground
@@ -30,6 +54,7 @@ const Signin = () => {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              autoCapitalize="none"
             />
             <TextInput
               style={styles.input}
@@ -41,9 +66,12 @@ const Signin = () => {
             
             <TouchableOpacity
               style={styles.button}
-              onPress={() => router.replace("/dashboard")}
+              onPress={handleSignIn}
+              disabled={loading}
             >
-              <Text style={styles.buttonText}>SIGN IN</Text>
+              <Text style={styles.buttonText}>
+                {loading ? "SIGNING IN..." : "SIGN IN"}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.signupLink}>
@@ -56,7 +84,7 @@ const Signin = () => {
         </View>
       </ScrollView>
       
-      {/* Bottom Navigation
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity 
           style={styles.navItem}
@@ -76,7 +104,7 @@ const Signin = () => {
         >
           <Ionicons name="home" size={24} color="white" />
         </TouchableOpacity>
-      </View> */}
+      </View>
     </ImageBackground>
   );
 };

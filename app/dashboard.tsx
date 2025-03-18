@@ -1,104 +1,5 @@
-// import React from "react";
-// import {
-//   View,
-//   TouchableOpacity,
-//   Text,
-//   StyleSheet,
-//   ImageBackground,
-//   ScrollView,
-// } from "react-native";
-// import { useNavigation } from "@react-navigation/native";
-// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// // Define your app's navigation structure
-// type RootStackParamList = {
-//   index: undefined;
-//   explore: undefined;
-//   // Add other routes as needed
-// };
-
-// // Create a typed navigation hook
-// type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// const Login: React.FC = () => {
-//   const navigation = useNavigation<LoginScreenNavigationProp>();
-
-//   return (
-//     <ImageBackground
-//       source={require("../../assets/images/thefillbac.png")}
-//       style={styles.container}
-//     >
-//       <ScrollView contentContainerStyle={styles.innerContainer}>
-//         <View style={styles.formWrapper}>
-//           <View style={styles.formContainer}>
-//             <TouchableOpacity
-//               style={styles.button}
-//               onPress={() => navigation.navigate("index")}
-//             >
-//               <Text style={styles.buttonText}>SIGN IN</Text>
-//             </TouchableOpacity>
-
-//             <TouchableOpacity
-//               style={styles.button}
-//               onPress={() => navigation.navigate("explore")}
-//             >
-//               <Text style={styles.buttonText}>SIGN UP</Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//       </ScrollView>
-//     </ImageBackground>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   // Your styles remain the same
-//   container: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   innerContainer: {
-//     width: "100%",
-//     maxWidth: 500,
-//     flexGrow: 1,
-//     justifyContent: "flex-start",
-//     alignItems: "center",
-//     padding: 20,
-//   },
-//   formWrapper: {
-//     flex: 1,
-//     justifyContent: "flex-start",
-//     alignItems: "center",
-//     width: "100%",
-//     paddingTop: 400,
-//   },
-//   formContainer: {
-//     width: "100%",
-//     maxWidth: 400,
-//     backgroundColor: "rgba(255, 255, 255, 0.7)",
-//     padding: 20,
-//     borderRadius: 10,
-//     elevation: 5,
-//   },
-//   button: {
-//     backgroundColor: "#001D75",
-//     paddingVertical: 18,
-//     paddingHorizontal: 65,
-//     borderRadius: 8,
-//     alignItems: "center",
-//     marginTop: 20,
-//   },
-//   buttonText: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//   },
-// });
-
-// export default Login;
-
-import React from 'react';
+// app/dashboard.tsx
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -107,16 +8,61 @@ import {
   TextInput, 
   TouchableOpacity, 
   ScrollView, 
-  ImageBackground 
+  ImageBackground,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { logOut } from '../services/authService';
+import { getData } from '../services/databaseService';
+import { useAuth } from '../context/AuthContext';
+
+// Define TypeScript interfaces
+interface Service {
+  id: string;
+  name?: string;
+  description?: string;
+  [key: string]: any; // Allow for additional properties
+}
 
 export default function Dashboard() {
   const router = useRouter();
+  const { currentUser, isAdmin } = useAuth();
+  const [services, setServices] = useState<Service[]>([]);
   
-  // Array of service blocks (just placeholders for now)
-  const serviceBlocks = Array(8).fill('Service');
+  // Get services on component mount
+  useEffect(() => {
+    // Fetch services from Firestore
+    const fetchServices = async () => {
+      const { data, error } = await getData('services');
+      if (error) {
+        console.error('Error fetching services:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        setServices(data as Service[]);
+      }
+    };
+    
+    fetchServices();
+  }, []);
+  
+  const handleLogout = async () => {
+    const { error } = await logOut();
+    
+    if (error) {
+      Alert.alert('Error', 'Failed to log out. Please try again.');
+      return;
+    }
+    
+    router.replace('/');
+  };
+  
+  // Sample service blocks if no data from Firebase
+  const serviceBlocks = services.length > 0 
+    ? services 
+    : Array(8).fill({ name: 'Service', description: 'Sample service' }) as Service[];
   
   return (
     <ImageBackground
@@ -133,10 +79,31 @@ export default function Dashboard() {
             />
             <Text style={styles.logoText}>HOPPER</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push("/")}>
-            <Ionicons name="log-out-outline" size={24} color="black" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            {isAdmin && (
+              <TouchableOpacity 
+                style={styles.adminButton}
+                onPress={() => router.push('/admin')}
+              >
+                <Ionicons name="settings-outline" size={24} color="#0a2463" />
+                <Text style={styles.adminText}>Admin</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color="black" />
+            </TouchableOpacity>
+          </View>
         </View>
+        
+        {/* User Welcome */}
+        {currentUser && (
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.welcomeText}>
+              Welcome, {currentUser.displayName || 'User'}!
+              {isAdmin && ' (Admin)'}
+            </Text>
+          </View>
+        )}
         
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -151,13 +118,16 @@ export default function Dashboard() {
         {/* Service Blocks Grid */}
         <ScrollView style={styles.scrollView}>
           <View style={styles.gridContainer}>
-            {serviceBlocks.map((_, index) => (
+            {serviceBlocks.map((service, index) => (
               <TouchableOpacity
-                key={index}
+                key={service.id || index}
                 style={styles.serviceBlock}
                 onPress={() => console.log(`Service ${index + 1} clicked`)}
               >
-                {/* Empty for now, will be filled with actual service info later */}
+                <Text style={styles.serviceTitle}>{service.name || `Service ${index + 1}`}</Text>
+                {service.description && (
+                  <Text style={styles.serviceDescription}>{service.description}</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -220,6 +190,33 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  adminText: {
+    marginLeft: 4,
+    fontWeight: '500',
+    color: '#0a2463',
+  },
+  welcomeContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#000',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,9 +246,21 @@ const styles = StyleSheet.create({
   serviceBlock: {
     width: '48%',
     height: 120,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 10,
     marginBottom: 16,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  serviceTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#0a2463',
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
   },
   bottomNav: {
     flexDirection: 'row',
