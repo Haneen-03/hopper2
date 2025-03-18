@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigation } from "@react-navigation/native"; // استخدام التنقل من react-navigation
+import { useNavigation } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -7,15 +7,27 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Clipboard,
+  Alert
 } from "react-native";
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface Language {
   code: string;
   name: string;
 }
 
+// Define your app's navigation structure
+type RootStackParamList = {
+  Dashboard: undefined;
+  // Add other routes as needed
+};
+
+// Create a typed navigation hook
+type TranslationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const TranslationPage: React.FC = () => {
-  const navigation = useNavigation(); // تعديل هنا لاستخدام التنقل
+  const navigation = useNavigation<TranslationScreenNavigationProp>();
   const [sourceText, setSourceText] = useState<string>("");
   const [translatedText, setTranslatedText] = useState<string>("");
   const [sourceLanguage, setSourceLanguage] = useState<string>("en");
@@ -76,6 +88,12 @@ const TranslationPage: React.FC = () => {
     return () => clearTimeout(debounceTimer);
   }, [sourceText, sourceLanguage, targetLanguage]);
 
+  // Handle copy to clipboard
+  const copyToClipboard = () => {
+    Clipboard.setString(translatedText);
+    Alert.alert("Copied", "Translation copied to clipboard");
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.formWrapper}>
@@ -102,6 +120,7 @@ const TranslationPage: React.FC = () => {
           onChangeText={(text) => setSourceText(text)}
           placeholder="Enter text to translate"
           style={styles.textarea}
+          multiline={true}
         />
 
         <TextInput
@@ -109,6 +128,7 @@ const TranslationPage: React.FC = () => {
           placeholder="Translation will appear here"
           style={[styles.textarea, styles.translatedTextarea]}
           editable={false}
+          multiline={true}
         />
 
         <View style={styles.buttonsContainer}>
@@ -124,7 +144,7 @@ const TranslationPage: React.FC = () => {
 
           <TouchableOpacity
             style={styles.copyButton}
-            onPress={() => navigator.clipboard.writeText(translatedText)}
+            onPress={copyToClipboard}
             disabled={!translatedText}
           >
             <Text style={styles.copyButtonText}>COPY</Text>
@@ -197,6 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingLeft: 10,
     textAlignVertical: "top",
+    padding: 10,
   },
   translatedTextarea: {
     backgroundColor: "#f9f9f9",

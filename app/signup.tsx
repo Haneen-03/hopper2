@@ -8,18 +8,19 @@ import {
   ScrollView,
   ImageBackground,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
 
-const Signup: React.FC = () => {
-  const navigation = useNavigation();
+const Signup = () => {
+  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   return (
     <ImageBackground
-      source={require("../../assets/images/thefillbac.png")} // تأكد من المسار الصحيح للصورة
-      style={styles.container} // تعيين الخلفية للصورة
+      source={require("../assets/images/thefillbac.png")}
+      style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.innerContainer}>
         <View style={styles.formContainer}>
@@ -45,26 +46,48 @@ const Signup: React.FC = () => {
           />
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate("index")}
+            onPress={() => router.replace("/dashboard")}
           >
             <Text style={styles.buttonText}>SIGN UP</Text>
           </TouchableOpacity>
 
           <View style={styles.loginLink}>
             <Text style={styles.text}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("explore")}>
+            <TouchableOpacity onPress={() => router.push("/signin")}>
               <Text style={styles.linkText}>SIGN IN</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+      
+      {/* Bottom Navigation
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/")}
+        >
+          <Ionicons name="person" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/football")}
+        >
+          <Ionicons name="football" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/dashboard")}
+        >
+          <Ionicons name="home" size={24} color="white" />
+        </TouchableOpacity>
+      </View> */}
     </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // تعيين الحجم الكامل للصورة
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -79,7 +102,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "rgba(255, 255, 255, 0.8)", // خلفية شفافة
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     padding: 20,
     borderRadius: 10,
     elevation: 5,
@@ -115,6 +138,16 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     color: "#001D75",
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#0a2463',
+    height: 60,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  navItem: {
+    padding: 10,
   },
 });
 

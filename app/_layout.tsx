@@ -9,13 +9,13 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "@/hooks/useColorScheme";
 
-// التحقق مما إذا كان التطبيق يعمل في بيئة المتصفح
+// Check if the app is running in a browser environment
 const isWeb = typeof window !== "undefined";
 
-// استيراد Platform فقط إذا لم يكن التطبيق على الويب
+// Import Platform only if not on web
 const Platform = isWeb ? null : require("react-native").Platform;
 
-// استيراد SplashScreen فقط إذا لم يكن التطبيق على الويب
+// Import SplashScreen only if not on web
 const SplashScreen = isWeb
   ? null
   : require("react-native-splash-screen").default;
@@ -40,7 +40,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Create a stack for auth screens (login/signup) */}
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        
+        {/* Create a stack for the main app screen */}
+        <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+        
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

@@ -8,17 +8,18 @@ import {
   ScrollView,
   ImageBackground,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native"; // التنقل عبر الشاشات باستخدام react-navigation
+import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
 
-const Login: React.FC = () => {
-  const navigation = useNavigation();
+const Signin = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   return (
     <ImageBackground
-      source={require("../../assets/images/thefillbac.png")} // تأكد من المسار الصحيح للصورة
-      style={styles.container} // تعيين الخلفية للصورة
+      source={require("../assets/images/thefillbac.png")}
+      style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.innerContainer}>
         <View style={styles.formWrapper}>
@@ -37,55 +38,74 @@ const Login: React.FC = () => {
               value={password}
               onChangeText={setPassword}
             />
-            <View style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </View>
-
+            
             <TouchableOpacity
               style={styles.button}
-              onPress={() => navigation.navigate("Dashboard")} // الانتقال إلى صفحة Dashboard
+              onPress={() => router.replace("/dashboard")}
             >
               <Text style={styles.buttonText}>SIGN IN</Text>
             </TouchableOpacity>
 
             <View style={styles.signupLink}>
               <Text style={styles.text}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("explore")}>
+              <TouchableOpacity onPress={() => router.push("/signup")}>
                 <Text style={styles.linkText}>SIGN UP</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </ScrollView>
+      
+      {/* Bottom Navigation
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/")}
+        >
+          <Ionicons name="person" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/football")}
+        >
+          <Ionicons name="football" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push("/dashboard")}
+        >
+          <Ionicons name="home" size={24} color="white" />
+        </TouchableOpacity>
+      </View> */}
     </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // استخدام flex: 1 لجعل الخلفية تغطي الشاشة بالكامل
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   innerContainer: {
-    width: "100%", // زيادة العرض بالنسب المئوية أو يمكنك تحديد قيمة بالبيكسل مثل 500
+    width: "100%",
     maxWidth: 500,
     flexGrow: 1,
-    justifyContent: "flex-start", // استخدم flex-start لتحريك العناصر لأعلى
+    justifyContent: "flex-start",
     alignItems: "center",
     padding: 20,
   },
   formWrapper: {
     flex: 1,
-    justifyContent: "flex-start", // استخدم flex-start لمحاذاة العناصر أعلى
+    justifyContent: "flex-start",
     alignItems: "center",
     width: "100%",
-    paddingTop: 400, // زيادة المسافة من الأعلى
+    paddingTop: 400,
   },
   formContainer: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "rgba(255, 255, 255, 0.7)", // جعل الخلفية شفافة
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     padding: 20,
     borderRadius: 10,
     elevation: 5,
@@ -130,6 +150,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#001D75",
   },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#0a2463',
+    height: 60,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  navItem: {
+    padding: 10,
+  },
 });
 
-export default Login;
+export default Signin;

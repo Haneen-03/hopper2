@@ -1,4 +1,5 @@
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import * as Haptics from 'expo-haptics';
 import { PlatformPressable } from "@react-navigation/elements";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
