@@ -149,15 +149,24 @@ function ServiceContentManagement() {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-
-    if (!serviceDocId) {
-      Alert.alert('Error', 'Service not found in database');
-      return;
-    }
-
+  
     try {
-      console.log(`Attempting to save item for service type: ${serviceType} with doc ID: ${serviceDocId}`);
-
+      console.log(`Attempting to save item for service type: ${serviceType}`);
+      
+      // Step 1: Find the actual Firestore document ID for this service type
+      const servicesCollection = collection(db, 'services');
+      const servicesQuery = query(servicesCollection, where('id', '==', serviceType));
+      const serviceSnapshot = await getDocs(servicesQuery);
+      
+      if (serviceSnapshot.empty) {
+        console.error(`No service found with id: ${serviceType}`);
+        Alert.alert('Error', `Service "${serviceType}" not found in database`);
+        return;
+      }
+      
+      const serviceDocId = serviceSnapshot.docs[0].id;
+      console.log(`Found service document ID: ${serviceDocId}`);
+  
       if (isEditing) {
         // Update existing item
         console.log(`Updating item: ${currentItem.id}`);
@@ -175,7 +184,7 @@ function ServiceContentManagement() {
         Alert.alert('Success', 'Item updated successfully');
       } else {
         // Add new item
-        console.log(`Adding new item to service: ${serviceDocId}`);
+        console.log(`Adding new item`);
         const itemsRef = collection(db, 'services', serviceDocId, 'items');
         const newItemRef = await addDoc(itemsRef, {
           ...currentItem,

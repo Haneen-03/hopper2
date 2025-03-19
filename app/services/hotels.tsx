@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 interface HotelItem {
@@ -28,16 +28,82 @@ export default function HotelsScreen() {
   const router = useRouter();
   const [hotels, setHotels] = useState<HotelItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [serviceDocId, setServiceDocId] = useState('');
 
+  // Find the actual Firestore document ID for hotels service
   useEffect(() => {
-    fetchHotels();
+    const findServiceDocId = async () => {
+      try {
+        console.log(`Finding document ID for hotels service`);
+        
+        // First try to find the service by its 'id' field
+        const servicesCollection = collection(db, 'services');
+        const servicesQuery = query(servicesCollection, where('id', '==', 'hotels'));
+        const serviceSnapshot = await getDocs(servicesQuery);
+        
+        if (!serviceSnapshot.empty) {
+          const docId = serviceSnapshot.docs[0].id;
+          console.log(`Found service document ID by 'id' field: ${docId}`);
+          setServiceDocId(docId);
+        } else {
+          // If not found by 'id', try finding by name
+          console.log(`No service found with id: hotels, trying name field`);
+          const nameQuery = query(servicesCollection, where('name', '==', 'Hotels'));
+          const nameSnapshot = await getDocs(nameQuery);
+          
+          if (!nameSnapshot.empty) {
+            const docId = nameSnapshot.docs[0].id;
+            console.log(`Found service document ID by name: ${docId}`);
+            setServiceDocId(docId);
+          } else {
+            // Check all services to find a match
+            console.log(`No service found by name, checking all services`);
+            const allServicesSnapshot = await getDocs(servicesCollection);
+            let found = false;
+            
+            allServicesSnapshot.forEach(doc => {
+              console.log(`Checking service: ${doc.id}`, doc.data());
+              
+              // Check various fields for a match
+              const data = doc.data();
+              if (
+                doc.id === 'hotels' || 
+                data.id === 'hotels' || 
+                data.name?.toLowerCase() === 'hotels'
+              ) {
+                console.log(`Found matching service: ${doc.id}`);
+                setServiceDocId(doc.id);
+                found = true;
+              }
+            });
+            
+            if (!found) {
+              // Use 'hotels' as the document ID as a fallback
+              console.log(`No matching service found, using 'hotels' as document ID`);
+              setServiceDocId('hotels');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error finding hotel service document ID:', error);
+      }
+    };
+
+    findServiceDocId();
   }, []);
+
+  // Fetch hotels once we have the service document ID
+  useEffect(() => {
+    if (serviceDocId) {
+      fetchHotels();
+    }
+  }, [serviceDocId]);
 
   const fetchHotels = async () => {
     setLoading(true);
     try {
-      console.log("Fetching hotels...");
-      const hotelsRef = collection(db, 'services', 'hotels', 'items');
+      console.log(`Fetching hotels with service doc ID: ${serviceDocId}`);
+      const hotelsRef = collection(db, 'services', serviceDocId, 'items');
       const snapshot = await getDocs(hotelsRef);
       
       console.log(`Found ${snapshot.size} hotels`);
@@ -45,10 +111,13 @@ export default function HotelsScreen() {
       if (snapshot.empty) {
         setHotels([]);
       } else {
-        const hotelsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as HotelItem[];
+        const hotelsData = snapshot.docs.map(doc => {
+          console.log(`Hotel: ${doc.id}`, doc.data());
+          return {
+            id: doc.id,
+            ...doc.data()
+          };
+        }) as HotelItem[];
         
         console.log("Hotels data:", hotelsData);
         setHotels(hotelsData);
@@ -76,6 +145,11 @@ export default function HotelsScreen() {
           <View style={{ width: 24 }} /> {/* Empty view for balance */}
         </View>
         
+        {/* Debug info */}
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>Service ID: {serviceDocId || 'Not found'}</Text>
+        </View>
+        
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0a2463" />
@@ -89,10 +163,10 @@ export default function HotelsScreen() {
                 hotels.map(hotel => (
                   <View key={hotel.id} style={styles.hotelCard}>
                     {hotel.imageUrl && (
-                        <Image 
-                            source={{ uri: hotel.imageUrl || 'https://via.placeholder.com/400x200?text=No+Image' }} 
-                            style={styles.hotelImage}
-                        />
+                      <Image 
+                        source={{ uri: hotel.imageUrl || 'https://via.placeholder.com/400x200?text=No+Image' }} 
+                        style={styles.hotelImage}
+                      />
                     )}
                     <View style={styles.hotelInfo}>
                       <Text style={styles.hotelTitle}>{hotel.title}</Text>
@@ -155,7 +229,16 @@ export default function HotelsScreen() {
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
+    debugContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+      },
+      debugText: {
+        fontSize: 12,
+        color: '#666',
+      },
+    backgroundImage: {
     flex: 1,
     width: '100%',
     height: '100%',
