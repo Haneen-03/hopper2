@@ -134,26 +134,42 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/")}
-          >
-            <Ionicons name="person" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/football")}
-          >
-            <Ionicons name="football" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/dashboard")}
-          >
-            <Ionicons name="home" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+<View style={styles.bottomNav}>
+  <TouchableOpacity 
+    style={styles.navItem}
+    onPress={() => router.push("/")}
+  >
+    <Ionicons name="person" size={24} color="white" />
+  </TouchableOpacity>
+  
+  <TouchableOpacity 
+    style={styles.navItem}
+    onPress={() => router.push("/football")}
+  >
+    <Ionicons name="football" size={24} color="white" />
+  </TouchableOpacity>
+  
+  <TouchableOpacity 
+    style={styles.navItem}
+    onPress={() => router.push("/dashboard")}
+  >
+    <Ionicons name="home" size={24} color="white" />
+  </TouchableOpacity>
+  
+  <TouchableOpacity 
+    style={styles.navItem}
+    onPress={() => router.push("/googleMaps")}
+  >
+    <Ionicons name="map-outline" size={24} color="white" />
+  </TouchableOpacity>
+  
+  <TouchableOpacity 
+    style={styles.navItem}
+    onPress={() => router.push("/translation")}
+  >
+    <Ionicons name="chatbubbles-outline" size={24} color="white" />
+  </TouchableOpacity>
+</View>
       </View>
     </ImageBackground>
   );
@@ -268,8 +284,9 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: 'space-around',
     alignItems: 'center',
+    paddingHorizontal: 10, // Add some padding
   },
   navItem: {
-    padding: 10,
+    padding: 8, // Reduce padding slightly
   },
 });
