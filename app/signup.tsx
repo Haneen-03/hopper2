@@ -32,15 +32,16 @@ const Signup = () => {
     setLoading(true);
     
     try {
-      console.log("Attempting to create user with email:", email);
+      console.log("Starting signup process...");
       
       // Create user in Firebase Auth
+      console.log("Attempting to create auth user");
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
-      console.log("Auth user created, now creating Firestore document");
+      console.log("Auth user created successfully:", user.uid);
       
       // Create user document in Firestore
+      console.log("Creating Firestore document for user");
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: email,
@@ -49,13 +50,27 @@ const Signup = () => {
         createdAt: new Date().toISOString(),
       });
       
-      console.log("User created successfully:", user.uid);
+      console.log("Firestore document created");
+      console.log("User creation complete");
+      
+      // Navigate to dashboard
       router.replace("/dashboard");
     } catch (error) {
       console.error("Error during signup:", error);
       
-      // Safely extract error message
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      // Get detailed error information
+      let errorMessage = "Failed to create account. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        
+        // If it's a Firebase Auth error, it might have a code
+        if ('code' in error) {
+          console.error("Error code:", (error as any).code);
+        }
+      }
+      
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -110,7 +125,7 @@ const Signup = () => {
       </ScrollView>
       
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      {/* <View style={styles.bottomNav}>
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => router.push("/")}
@@ -129,7 +144,7 @@ const Signup = () => {
         >
           <Ionicons name="home" size={24} color="white" />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </ImageBackground>
   );
 };

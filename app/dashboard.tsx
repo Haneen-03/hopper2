@@ -22,6 +22,7 @@ interface Service {
   id: string;
   name?: string;
   description?: string;
+  route?: string;
   [key: string]: any; // Allow for additional properties
 }
 
@@ -29,6 +30,15 @@ export default function Dashboard() {
   const router = useRouter();
   const { currentUser, isAdmin } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
+  
+  // Define your service blocks with proper routes
+  const serviceBlocks = [
+    { id: 'hotels', name: 'Hotels', description: 'Find the best accommodations', route: '/services/hotels' },
+    { id: 'restaurants', name: 'Restaurants', description: 'Discover local cuisine', route: '/services/restaurants' },
+    { id: 'transportation', name: 'Transportation', description: 'Get around easily', route: '/services/transportation' },
+    { id: 'simCards', name: 'SIM Cards', description: 'Stay connected', route: '/services/simCards' },
+    { id: 'guides', name: 'Guides', description: 'Explore with local guides', route: '/services/guides' }
+  ];
   
   // Get services on component mount
   useEffect(() => {
@@ -58,11 +68,6 @@ export default function Dashboard() {
     
     router.replace('/');
   };
-  
-  // Sample service blocks if no data from Firebase
-  const serviceBlocks = services.length > 0 
-    ? services 
-    : Array(8).fill({ name: 'Service', description: 'Sample service' }) as Service[];
   
   return (
     <ImageBackground
@@ -120,56 +125,50 @@ export default function Dashboard() {
           <View style={styles.gridContainer}>
             {serviceBlocks.map((service, index) => (
               <TouchableOpacity
-                key={service.id || index}
+                key={service.id}
                 style={styles.serviceBlock}
-                onPress={() => console.log(`Service ${index + 1} clicked`)}
+                onPress={() => router.push(service.route as any)}
               >
-                <Text style={styles.serviceTitle}>{service.name || `Service ${index + 1}`}</Text>
-                {service.description && (
-                  <Text style={styles.serviceDescription}>{service.description}</Text>
-                )}
+                <Text style={styles.serviceTitle}>{service.name}</Text>
+                <Text style={styles.serviceDescription}>{service.description}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
 
         {/* Bottom Navigation */}
-<View style={styles.bottomNav}>
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => router.push("/")}
-  >
-    <Ionicons name="person" size={24} color="white" />
-  </TouchableOpacity>
-  
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => router.push("/football")}
-  >
-    <Ionicons name="football" size={24} color="white" />
-  </TouchableOpacity>
-  
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => router.push("/dashboard")}
-  >
-    <Ionicons name="home" size={24} color="white" />
-  </TouchableOpacity>
-  
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => router.push("/googleMaps")}
-  >
-    <Ionicons name="map-outline" size={24} color="white" />
-  </TouchableOpacity>
-  
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => router.push("/translation")}
-  >
-    <Ionicons name="chatbubbles-outline" size={24} color="white" />
-  </TouchableOpacity>
-</View>
+        <View style={styles.bottomNav}>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/")}
+          >
+            <Ionicons name="person" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/football")}
+          >
+            <Ionicons name="football" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/dashboard")}
+          >
+            <Ionicons name="home" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/services/googleMaps")}
+          >
+            <Ionicons name="map-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/services/translation")}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
     </ImageBackground>
   );
@@ -284,9 +283,9 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 10, // Add some padding
+    paddingHorizontal: 10,
   },
   navItem: {
-    padding: 8, // Reduce padding slightly
+    padding: 8,
   },
 });

@@ -40,7 +40,7 @@ const Login = () => {
       </ScrollView>
 
           {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
+        {/* <View style={styles.bottomNav}>
           <TouchableOpacity 
             style={styles.navItem}
             onPress={() => router.push("/")}
@@ -58,8 +58,8 @@ const Login = () => {
             onPress={() => router.push("/dashboard")}
           >
             <Ionicons name="home" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+          </TouchableOpacity> */}
+        {/* </View> */}
 
     </ImageBackground>
   );

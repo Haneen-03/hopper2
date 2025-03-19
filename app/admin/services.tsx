@@ -15,7 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { getData, addData, updateData, deleteData } from '../../services/databaseService';
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import AdminProtectedRoute from '../../components/AdminProtectedRoute';
 
 // Define TypeScript interfaces
@@ -23,25 +24,34 @@ interface Service {
   id: string;
   name: string;
   description: string;
-  createdAt?: string;
-  updatedAt?: string;
+  route: string;
   [key: string]: any; // Allow for additional properties
 }
 
-interface CurrentService {
-  id?: string;
+interface ServiceType {
+  id: string;
   name: string;
   description: string;
+  route: string;
 }
 
 function ServiceManagement() {
   const { isAdmin } = useAuth();
   const router = useRouter();
-  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [services, setServices] = useState<Service[]>([]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [currentService, setCurrentService] = useState<CurrentService>({ name: '', description: '' });
+  const [currentService, setCurrentService] = useState<Service>({ id: '', name: '', description: '', route: '' });
   const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  // Define your service types
+  const serviceTypes: ServiceType[] = [
+    { id: 'hotels', name: 'Hotels', description: 'Accommodation services', route: '/services/hotels' },
+    { id: 'restaurants', name: 'Restaurants', description: 'Dining services', route: '/services/restaurants' },
+    { id: 'transportation', name: 'Transportation', description: 'Getting around', route: '/services/transportation' },
+    { id: 'simCards', name: 'SIM Cards', description: 'Connectivity services', route: '/services/simCards' },
+    { id: 'guides', name: 'Guides', description: 'Tour guide services', route: '/services/guides' }
+  ];
 
   useEffect(() => {
     fetchServices();
@@ -49,63 +59,114 @@ function ServiceManagement() {
 
   const fetchServices = async () => {
     setLoading(true);
-    const { data, error } = await getData('services');
-    
-    if (error) {
+    try {
+      console.log("Fetching services...");
+      const servicesCollection = collection(db, 'services');
+      const servicesSnapshot = await getDocs(servicesCollection);
+      
+      console.log("Services snapshot size:", servicesSnapshot.size);
+      
+      if (servicesSnapshot.empty) {
+        console.log("No services found, using predefined types");
+        setServices(serviceTypes);
+      } else {
+        console.log("Services found in Firestore");
+        const servicesData = servicesSnapshot.docs.map(doc => {
+          console.log("Service doc:", doc.id, doc.data());
+          return {
+            id: doc.id,
+            ...doc.data()
+          };
+        }) as Service[];
+        
+        console.log("Setting services:", servicesData);
+        setServices(servicesData);
+      }
+    } catch (error) {
       console.error("Error fetching services:", error);
       Alert.alert('Error', 'Failed to load services');
-    } else {
-      setServices(data as Service[] || []);
+      
+      // Fallback to predefined types if Firestore fetch fails
+      setServices(serviceTypes);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
+  };
+
+  const initializeFixedServices = async () => {
+    try {
+      const servicesCollection = collection(db, 'services');
+      
+      // Check if services already exist
+      const snapshot = await getDocs(servicesCollection);
+      if (!snapshot.empty) {
+        Alert.alert('Services Exist', 'Fixed services are already initialized');
+        return;
+      }
+      
+      console.log("Initializing fixed services...");
+      
+      // Add all predefined services to Firestore
+      for (const service of serviceTypes) {
+        await addDoc(servicesCollection, {
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          route: service.route,
+          createdAt: new Date().toISOString()
+        });
+        console.log(`Service ${service.name} added`);
+      }
+      
+      Alert.alert('Success', 'Fixed services initialized successfully');
+      fetchServices(); // Refresh the list
+    } catch (error) {
+      console.error('Error initializing services:', error);
+      Alert.alert('Error', 'Failed to initialize services');
+    }
   };
 
   const handleSaveService = async () => {
-    if (!currentService.name) {
-      Alert.alert('Error', 'Service name is required');
+    if (!currentService.name || !currentService.description || !currentService.route) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     try {
-      if (isEditing && currentService.id) {
+      if (isEditing) {
         // Update existing service
-        await updateData('services', currentService.id, {
+        const serviceRef = doc(db, 'services', currentService.id);
+        await updateDoc(serviceRef, {
           name: currentService.name,
-          description: currentService.description
+          description: currentService.description,
+          route: currentService.route,
+          updatedAt: new Date().toISOString()
         });
         
         // Update local state
         setServices(services.map(service => 
-          service.id === currentService.id ? 
-            { ...service, ...currentService } : 
-            service
+          service.id === currentService.id ? currentService : service
         ));
         
         Alert.alert('Success', 'Service updated successfully');
       } else {
         // Add new service
-        const { id, error } = await addData('services', {
+        const servicesCollection = collection(db, 'services');
+        const newServiceRef = await addDoc(servicesCollection, {
           name: currentService.name,
-          description: currentService.description
+          description: currentService.description,
+          route: currentService.route,
+          createdAt: new Date().toISOString()
         });
         
-        if (error) {
-          throw error;
-        }
-        
-        // Add to local state with the returned id
-        const newService: Service = { 
-          ...currentService, 
-          id: id as string 
-        };
-        setServices([...services, newService]);
+        // Add to local state
+        setServices([...services, { ...currentService, id: newServiceRef.id }]);
         Alert.alert('Success', 'Service added successfully');
       }
       
       // Reset and close modal
       setModalVisible(false);
-      setCurrentService({ name: '', description: '' });
+      setCurrentService({ id: '', name: '', description: '', route: '' });
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving service:', error);
@@ -124,7 +185,8 @@ function ServiceManagement() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteData('services', serviceId);
+              const serviceRef = doc(db, 'services', serviceId);
+              await deleteDoc(serviceRef);
               setServices(services.filter(service => service.id !== serviceId));
               Alert.alert('Success', 'Service deleted successfully');
             } catch (error) {
@@ -144,9 +206,14 @@ function ServiceManagement() {
   };
 
   const openAddModal = () => {
-    setCurrentService({ name: '', description: '' });
+    setCurrentService({ id: '', name: '', description: '', route: '' });
     setIsEditing(false);
     setModalVisible(true);
+  };
+
+  const navigateToServiceContent = (serviceType: string) => {
+    // Navigate to specific service content management
+    router.push(`/admin/content/${serviceType}` as any);
   };
 
   return (
@@ -166,40 +233,53 @@ function ServiceManagement() {
           </TouchableOpacity>
         </View>
         
+        {/* Initialize Services Button */}
+        <TouchableOpacity 
+          style={styles.initButton}
+          onPress={initializeFixedServices}
+        >
+          <Text style={styles.initButtonText}>Initialize Fixed Services</Text>
+        </TouchableOpacity>
+        
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0a2463" />
           </View>
         ) : (
           <ScrollView style={styles.scrollView}>
-            {services.length > 0 ? (
-              services.map(service => (
-                <View key={service.id} style={styles.serviceCard}>
+            {services.map((service) => (
+              <View key={service.id} style={styles.serviceCard}>
+                <TouchableOpacity 
+                  style={styles.serviceContent}
+                  onPress={() => navigateToServiceContent(service.id)}
+                >
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceName}>{service.name}</Text>
                     <Text style={styles.serviceDescription}>
                       {service.description || 'No description'}
                     </Text>
+                    <Text style={styles.serviceRoute}>
+                      Route: {service.route}
+                    </Text>
                   </View>
-                  <View style={styles.serviceActions}>
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.editButton]}
-                      onPress={() => openEditModal(service)}
-                    >
-                      <Ionicons name="create-outline" size={20} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.deleteButton]}
-                      onPress={() => handleDeleteService(service.id)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
+                  <Ionicons name="chevron-forward" size={24} color="#0a2463" />
+                </TouchableOpacity>
+                <View style={styles.serviceActions}>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.editButton]}
+                    onPress={() => openEditModal(service)}
+                  >
+                    <Ionicons name="create-outline" size={20} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.deleteButton]}
+                    onPress={() => handleDeleteService(service.id)}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="white" />
+                  </TouchableOpacity>
                 </View>
-              ))
-            ) : (
-              <Text style={styles.noResultsText}>No services found</Text>
-            )}
+              </View>
+            ))}
           </ScrollView>
         )}
         
@@ -229,6 +309,13 @@ function ServiceManagement() {
                 value={currentService.description}
                 onChangeText={(text) => setCurrentService({...currentService, description: text})}
                 multiline
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Route (e.g., /services/hotels)"
+                value={currentService.route}
+                onChangeText={(text) => setCurrentService({...currentService, route: text})}
               />
               
               <View style={styles.modalButtons}>
@@ -270,6 +357,18 @@ function ServiceManagement() {
           >
             <Ionicons name="home" size={24} color="white" />
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/services/googleMaps")}
+          >
+            <Ionicons name="map-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push("/services/translation")}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="white" />
+          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
@@ -307,6 +406,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0a2463',
   },
+  initButton: {
+    backgroundColor: '#28a745',
+    margin: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  initButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -321,9 +432,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     marginBottom: 12,
+  },
+  serviceContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
   serviceInfo: {
     flex: 1,
@@ -338,8 +452,17 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  serviceRoute: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
   serviceActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 12,
   },
   actionButton: {
     width: 40,
@@ -354,12 +477,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#dc3545',
-  },
-  noResultsText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
   },
   modalOverlay: {
     flex: 1,
@@ -423,8 +540,9 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: 'space-around',
     alignItems: 'center',
+    paddingHorizontal: 10,
   },
   navItem: {
-    padding: 10,
+    padding: 8,
   },
 });
