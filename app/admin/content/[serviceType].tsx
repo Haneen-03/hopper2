@@ -473,60 +473,84 @@ function ServiceContentManagement() {
           </View>
         ) : (
           <ScrollView style={styles.scrollView}>
-            {items.length > 0 ? (
-              items.map((item) => (
-                <View key={item.id} style={styles.itemCard}>
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemDescription}>
-                      {item.description && item.description.length > 100 
-                        ? item.description.substring(0, 100) + '...' 
-                        : item.description}
-                    </Text>
-                    
-                    {/* Display additional info based on service type */}
-                    {item.price && (
-                      <Text style={styles.itemDetail}>Price: {item.price}</Text>
-                    )}
-                    {item.location && (
-                      <Text style={styles.itemDetail}>Location: {item.location}</Text>
-                    )}
-                    {item.cuisineType && (
-                      <Text style={styles.itemDetail}>Cuisine: {item.cuisineType}</Text>
-                    )}
-                    
-                    {/* Show ID for debugging */}
-                    <Text style={styles.itemIdText}>ID: {item.id}</Text>
-                  </View>
-                  <View style={styles.itemActions}>
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.editButton]}
-                      onPress={() => {
-                        console.log("Edit button pressed for:", item.id);
-                        openEditModal(item);
-                      }}
-                    >
-                      <Ionicons name="create-outline" size={20} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.deleteButton]}
-                      onPress={() => {
-                        console.log("Delete button pressed for:", item.id);
-                        handleDeleteItem(item.id);
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  No {serviceTitle} items found. Click the + button to add some.
-                </Text>
-              </View>
-            )}
+{items.length > 0 ? (
+  items.map((item) => (
+    <View key={item.id} style={styles.itemCard}>
+      <View style={styles.itemInfo}>
+        <Text style={styles.itemTitle}>{item.title}</Text>
+        <Text style={styles.itemDescription}>
+          {item.description && item.description.length > 100 
+            ? item.description.substring(0, 100) + '...' 
+            : item.description}
+        </Text>
+        
+        {/* Display additional info based on service type */}
+        {item.price && (
+          <Text style={styles.itemDetail}>Price: {item.price}</Text>
+        )}
+        {item.location && (
+          <Text style={styles.itemDetail}>Location: {item.location}</Text>
+        )}
+        {item.cuisineType && (
+          <Text style={styles.itemDetail}>Cuisine: {item.cuisineType}</Text>
+        )}
+        
+        {/* Show ID for debugging */}
+        <Text style={styles.itemIdText}>ID: {item.id}</Text>
+      </View>
+      <View style={styles.itemActions}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.editButton]}
+          activeOpacity={0.7}
+          onPress={() => openEditModal(item)}
+        >
+          <Ionicons name="create-outline" size={20} color="white" />
+        </TouchableOpacity>
+        {/* Recreate the delete button with a direct onPress handler */}
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.deleteButton]}
+          activeOpacity={0.7}
+          onPress={() => {
+            console.log("DELETE BUTTON PRESSED - direct handler");
+            Alert.alert(
+              "Confirm Delete",
+              `Are you sure you want to delete "${item.title}"?`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { 
+                  text: "Delete", 
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      console.log(`Deleting item ${item.id}`);
+                      await deleteDoc(doc(db, 'services', serviceDocId, 'items', item.id));
+                      console.log("Document deleted successfully");
+                      setItems(currentItems => 
+                        currentItems.filter(i => i.id !== item.id)
+                      );
+                      Alert.alert("Success", "Item deleted");
+                    } catch (error) {
+                      console.error("Delete error:", error);
+                      Alert.alert("Error", `Could not delete: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="trash-outline" size={20} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  ))
+) : (
+  <View style={styles.emptyState}>
+    <Text style={styles.emptyStateText}>
+      No {serviceTitle} items found. Click the + button to add some.
+    </Text>
+  </View>
+)}
           </ScrollView>
         )}
         
