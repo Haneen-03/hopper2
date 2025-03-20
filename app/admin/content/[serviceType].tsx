@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { collection, query, getDocs, doc, setDoc, deleteDoc, addDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, where } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import AdminProtectedRoute from '../../../components/AdminProtectedRoute';
 
@@ -25,7 +25,14 @@ interface ContentItem {
   description: string;
   imageUrl?: string;
   price?: string;
-  [key: string]: any;
+  location?: string;
+  cuisineType?: string;
+  priceRange?: string;
+  provider?: string;
+  dataAmount?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any; // Allow for any additional properties
 }
 
 function ServiceContentManagement() {
@@ -65,42 +72,33 @@ function ServiceContentManagement() {
           console.log(`Found service document ID by 'id' field: ${docId}`);
           setServiceDocId(docId);
         } else {
-          // If not found by 'id', try finding by serviceType directly
-          console.log(`No service found with id field: ${serviceType}, trying direct document ID`);
+          // If not found by 'id', try direct document ID
+          const directDocRef = doc(db, 'services', String(serviceType));
+          const directDocSnap = await getDoc(directDocRef);
           
-          // Check all services to find a match
-          const allServicesSnapshot = await getDocs(servicesCollection);
-          let found = false;
-          
-          allServicesSnapshot.forEach(doc => {
-            console.log(`Checking service: ${doc.id}`, doc.data());
-            
-            // Check various fields for a match
-            const data = doc.data();
-            if (
-              doc.id === serviceType || 
-              data.id === serviceType || 
-              data.name?.toLowerCase() === String(serviceType).toLowerCase()
-            ) {
-              console.log(`Found matching service: ${doc.id}`);
-              setServiceDocId(doc.id);
-              found = true;
-            }
-          });
-          
-          if (!found) {
-            // Use serviceType as the document ID as a fallback
-            console.log(`No matching service found, using serviceType as document ID: ${serviceType}`);
+          if (directDocSnap.exists()) {
+            console.log(`Found service document directly: ${serviceType}`);
+            setServiceDocId(String(serviceType));
+          } else {
+            // Create the service if it doesn't exist
+            console.log(`No service found, creating with ID: ${serviceType}`);
+            const newServiceRef = doc(db, 'services', String(serviceType));
+            await setDoc(newServiceRef, {
+              id: String(serviceType),
+              name: serviceTitle || String(serviceType),
+              createdAt: new Date().toISOString()
+            });
             setServiceDocId(String(serviceType));
           }
         }
       } catch (error) {
         console.error('Error finding service document ID:', error);
+        Alert.alert('Error', `Failed to find service: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     };
 
     findServiceDocId();
-  }, [serviceType]);
+  }, [serviceType, serviceTitle]);
 
   // Fetch content items for this service type
   useEffect(() => {
@@ -126,12 +124,12 @@ function ServiceContentManagement() {
         setItems([]);
       } else {
         const itemsData = snapshot.docs.map(doc => {
-          console.log(`Item: ${doc.id}`, doc.data());
+          console.log(`Item: ${doc.id}, Title: ${doc.data().title || 'No title'}`);
           return {
             id: doc.id,
             ...doc.data()
-          };
-        }) as ContentItem[];
+          } as ContentItem;
+        });
         
         setItems(itemsData);
       }
@@ -144,107 +142,215 @@ function ServiceContentManagement() {
     }
   };
 
-  const handleSaveItem = async () => {
+  // Open edit modal function
+  const openEditModal = (item: ContentItem): void => {
+    console.log("EDIT: Opening edit modal for item:", item.id, item.title);
+    
+    // Make a deep copy of the item to avoid reference issues
+    const itemCopy: ContentItem = {
+      id: item.id,
+      title: item.title || "",
+      description: item.description || "",
+      price: item.price || "",
+      location: item.location || "",
+      imageUrl: item.imageUrl || "",
+      cuisineType: item.cuisineType || "",
+      priceRange: item.priceRange || "",
+      provider: item.provider || "",
+      dataAmount: item.dataAmount || ""
+    };
+    
+    console.log("EDIT: Setting current item with ID:", itemCopy.id);
+    setIsEditing(true);
+    setCurrentItem(itemCopy);
+    setModalVisible(true);
+  };
+
+  // Save function with proper TypeScript typing
+  const handleSaveItem = async (): Promise<void> => {
     if (!currentItem.title || !currentItem.description) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
   
-    try {
-      console.log(`Attempting to save item for service type: ${serviceType}`);
-      
-      // Step 1: Find the actual Firestore document ID for this service type
-      const servicesCollection = collection(db, 'services');
-      const servicesQuery = query(servicesCollection, where('id', '==', serviceType));
-      const serviceSnapshot = await getDocs(servicesQuery);
-      
-      if (serviceSnapshot.empty) {
-        console.error(`No service found with id: ${serviceType}`);
-        Alert.alert('Error', `Service "${serviceType}" not found in database`);
-        return;
-      }
-      
-      const serviceDocId = serviceSnapshot.docs[0].id;
-      console.log(`Found service document ID: ${serviceDocId}`);
-  
-      if (isEditing) {
-        // Update existing item
-        console.log(`Updating item: ${currentItem.id}`);
-        const itemRef = doc(db, 'services', serviceDocId, 'items', currentItem.id);
-        await setDoc(itemRef, {
-          ...currentItem,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-        
-        // Update local state
-        setItems(items.map(item => 
-          item.id === currentItem.id ? currentItem : item
-        ));
-        
-        Alert.alert('Success', 'Item updated successfully');
-      } else {
-        // Add new item
-        console.log(`Adding new item`);
-        const itemsRef = collection(db, 'services', serviceDocId, 'items');
-        const newItemRef = await addDoc(itemsRef, {
-          ...currentItem,
-          createdAt: new Date().toISOString()
-        });
-        
-        console.log(`New item added with ID: ${newItemRef.id}`);
-        
-        // Add to local state
-        setItems([...items, { ...currentItem, id: newItemRef.id }]);
-        Alert.alert('Success', 'Item added successfully');
-      }
-      
-      // Reset and close modal
-      setModalVisible(false);
-      setCurrentItem({ id: '', title: '', description: '' });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error saving item:', error);
-      Alert.alert('Error', 'Failed to save item: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
     if (!serviceDocId) {
       Alert.alert('Error', 'Service not found in database');
       return;
     }
+  
+    try {
+      if (isEditing && currentItem.id) {
+        console.log(`SAVE: Updating existing item: ${currentItem.id}`);
+        
+        // Create update data with proper typing
+        const updateData: Partial<ContentItem> = {
+          title: currentItem.title,
+          description: currentItem.description,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Add service-specific fields
+        if (currentItem.price) updateData.price = currentItem.price;
+        if (currentItem.location) updateData.location = currentItem.location;
+        if (currentItem.imageUrl) updateData.imageUrl = currentItem.imageUrl;
+        if (currentItem.cuisineType) updateData.cuisineType = currentItem.cuisineType;
+        if (currentItem.priceRange) updateData.priceRange = currentItem.priceRange;
+        if (currentItem.provider) updateData.provider = currentItem.provider;
+        if (currentItem.dataAmount) updateData.dataAmount = currentItem.dataAmount;
+        
+        console.log(`SAVE: Update data:`, updateData);
+        console.log(`SAVE: Path: services/${serviceDocId}/items/${currentItem.id}`);
+        
+        // Get document reference and update
+        const docRef = doc(db, 'services', serviceDocId, 'items', currentItem.id);
+        await updateDoc(docRef, updateData);
+        
+        console.log(`SAVE: Document updated successfully`);
+        
+        // Update local state with type safety
+        setItems(prevItems => 
+          prevItems.map(item => 
+            item.id === currentItem.id 
+              ? { ...item, ...updateData } 
+              : item
+          )
+        );
+        
+        Alert.alert('Success', 'Item updated successfully');
+      } else {
+        console.log(`SAVE: Creating new item`);
+        
+        // Prepare new item data with proper typing
+        const newItemData: Partial<ContentItem> = {
+          title: currentItem.title,
+          description: currentItem.description,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Add service-specific fields
+        if (currentItem.price) newItemData.price = currentItem.price;
+        if (currentItem.location) newItemData.location = currentItem.location;
+        if (currentItem.imageUrl) newItemData.imageUrl = currentItem.imageUrl;
+        if (currentItem.cuisineType) newItemData.cuisineType = currentItem.cuisineType;
+        if (currentItem.priceRange) newItemData.priceRange = currentItem.priceRange;
+        if (currentItem.provider) newItemData.provider = currentItem.provider;
+        if (currentItem.dataAmount) newItemData.dataAmount = currentItem.dataAmount;
+        
+        console.log(`SAVE: New item data:`, newItemData);
+        
+        // Create reference and add document
+        const itemsCollRef = collection(db, 'services', serviceDocId, 'items');
+        const newItemRef = await addDoc(itemsCollRef, newItemData);
+        
+        console.log(`SAVE: New item added with ID: ${newItemRef.id}`);
+        
+        // Add to local state with type assertion
+        const newItemWithId: ContentItem = { 
+          ...newItemData, 
+          id: newItemRef.id 
+        } as ContentItem;
+        
+        setItems(prevItems => [...prevItems, newItemWithId]);
+        
+        Alert.alert('Success', 'Item added successfully');
+      }
+      
+      // Close modal and reset form regardless of operation
+      setModalVisible(false);
+      setCurrentItem({ id: '', title: '', description: '' });
+      setIsEditing(false);
+    } catch (error: unknown) {
+      console.error('Error saving item:', error);
+      
+      // Properly handle unknown error type
+      let errorMessage = "Unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
+      Alert.alert('Error', 'Failed to save item: ' + errorMessage);
+    }
+  };
 
+  // Delete function with proper TypeScript typing
+  const handleDeleteItem = async (itemId: string): Promise<void> => {
+    console.log(`DELETE: Button pressed for item ID: ${itemId}`);
+    
+    // Check if we have a valid ID
+    if (!itemId || typeof itemId !== 'string') {
+      console.error(`DELETE: Invalid item ID provided: ${itemId}, type: ${typeof itemId}`);
+      Alert.alert("Error", "Cannot delete item: Invalid ID");
+      return;
+    }
+    
+    // Check if service ID is available
+    if (!serviceDocId) {
+      console.error(`DELETE: No service document ID available`);
+      Alert.alert("Error", "Cannot delete: Service not found");
+      return;
+    }
+    
+    // Look up the item to be deleted
+    const itemToDelete = items.find(item => item.id === itemId);
+    console.log(`DELETE: Found item to delete:`, itemToDelete);
+    
+    // Create the confirmation alert
     Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this item?',
+      "Delete Confirmation",
+      `Are you sure you want to delete ${itemToDelete?.title || 'this item'}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
-          style: 'destructive',
+          text: "Cancel", 
+          style: "cancel",
+          onPress: () => console.log("DELETE: User cancelled deletion")
+        },
+        {
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             try {
-              const itemRef = doc(db, 'services', serviceDocId, 'items', itemId);
-              await deleteDoc(itemRef);
+              console.log(`DELETE: User confirmed. Deleting item at path: services/${serviceDocId}/items/${itemId}`);
+              
+              // Use a direct approach to delete
+              const db_ref = doc(db, 'services', serviceDocId, 'items', itemId);
+              await deleteDoc(db_ref);
+              console.log(`DELETE: Document successfully deleted from Firestore`);
+              
+              // Update local state
               setItems(items.filter(item => item.id !== itemId));
-              Alert.alert('Success', 'Item deleted successfully');
-            } catch (error) {
-              console.error('Error deleting item:', error);
-              Alert.alert('Error', 'Failed to delete item: ' + (error instanceof Error ? error.message : 'Unknown error'));
+              console.log(`DELETE: Local state updated, removed item: ${itemId}`);
+              
+              // Show success message
+              Alert.alert("Success", "Item deleted successfully");
+            } catch (error: unknown) {
+              console.error("DELETE ERROR:", error);
+              let errorMessage = "Unknown error";
+              
+              if (error instanceof Error) {
+                errorMessage = error.message;
+                console.error("Error details:", {
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack
+                });
+              }
+              
+              Alert.alert("Error", `Failed to delete item: ${errorMessage}`);
             }
           }
         }
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
-  const openEditModal = (item: ContentItem) => {
-    setCurrentItem(item);
-    setIsEditing(true);
-    setModalVisible(true);
-  };
-
   const openAddModal = () => {
+    console.log("Opening add modal");
     setCurrentItem({ id: '', title: '', description: '' });
     setIsEditing(false);
     setModalVisible(true);
@@ -373,7 +479,7 @@ function ServiceContentManagement() {
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemTitle}>{item.title}</Text>
                     <Text style={styles.itemDescription}>
-                      {item.description.length > 100 
+                      {item.description && item.description.length > 100 
                         ? item.description.substring(0, 100) + '...' 
                         : item.description}
                     </Text>
@@ -388,17 +494,26 @@ function ServiceContentManagement() {
                     {item.cuisineType && (
                       <Text style={styles.itemDetail}>Cuisine: {item.cuisineType}</Text>
                     )}
+                    
+                    {/* Show ID for debugging */}
+                    <Text style={styles.itemIdText}>ID: {item.id}</Text>
                   </View>
                   <View style={styles.itemActions}>
                     <TouchableOpacity 
                       style={[styles.actionButton, styles.editButton]}
-                      onPress={() => openEditModal(item)}
+                      onPress={() => {
+                        console.log("Edit button pressed for:", item.id);
+                        openEditModal(item);
+                      }}
                     >
                       <Ionicons name="create-outline" size={20} color="white" />
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.actionButton, styles.deleteButton]}
-                      onPress={() => handleDeleteItem(item.id)}
+                      onPress={() => {
+                        console.log("Delete button pressed for:", item.id);
+                        handleDeleteItem(item.id);
+                      }}
                     >
                       <Ionicons name="trash-outline" size={20} color="white" />
                     </TouchableOpacity>
@@ -428,6 +543,11 @@ function ServiceContentManagement() {
                 {isEditing ? `Edit ${serviceTitle} Item` : `Add New ${serviceTitle} Item`}
               </Text>
               
+              {/* Show item ID in edit mode */}
+              {isEditing && currentItem.id && (
+                <Text style={styles.itemIdText}>Editing Item ID: {currentItem.id}</Text>
+              )}
+              
               <ScrollView style={styles.formScrollView}>
                 {renderFormFields()}
               </ScrollView>
@@ -444,7 +564,9 @@ function ServiceContentManagement() {
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={handleSaveItem}
                 >
-                  <Text style={styles.saveButtonText}>Save</Text>
+                  <Text style={styles.saveButtonText}>
+                    {isEditing ? 'Update' : 'Save'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -522,7 +644,7 @@ const styles = StyleSheet.create({
   },
   debugContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   debugText: {
@@ -576,6 +698,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginTop: 2,
+  },
+  itemIdText: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   itemActions: {
     flexDirection: 'row',
